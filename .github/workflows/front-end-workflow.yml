@@ -6,7 +6,7 @@ on:
       system-dir:
         required: true
         type: string
-        description: 'Project directory name (e.g. pakiPARK-Web)'
+        description: 'System Name (Used for Artifacts/Sonar, NOT path)'
       sonar-project-key:
         required: true
         type: string
@@ -31,12 +31,12 @@ jobs:
     name: Web — Governance Checks
     uses: ./.github/workflows/governance-check.yml
     with:
-      working-directory: ${{ inputs.system-dir }}
+      working-directory: '.'   # 👈 NOW RUNS IN ROOT
       test-command: 'npx vitest run --coverage --reporter=verbose'
       coverage-threshold: ${{ inputs.coverage-threshold }}
+      artifact-name: ${{ inputs.system-dir }} # 👈 PASS NAME EXPLICITLY
 
   # ── Stage 2: SonarCloud Quality Gate ───────────────────────────
-  # MOVED UP: Must pass BEFORE build starts
   web-sonarcloud:
     name: Web — SonarCloud Analysis
     needs: web-governance
@@ -51,7 +51,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ${{ inputs.system-dir }}-coverage
-          path: ${{ inputs.system-dir }}/coverage
+          path: coverage
 
       - name: Run SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v5.0.0
@@ -59,7 +59,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
-          projectBaseDir: ${{ inputs.system-dir }}
+          projectBaseDir: .   # 👈 NOW RUNS IN ROOT
           args: >
             -Dsonar.organization=${{ inputs.sonar-organization }}
             -Dsonar.projectKey=${{ inputs.sonar-project-key }}
@@ -70,11 +70,11 @@ jobs:
   # ── Stage 3: Build Web Application ─────────────────────────────
   web-build:
     name: Web — Build
-    needs: web-sonarcloud  # 👈 CHANGED: Now waits for SonarCloud to pass
+    needs: web-sonarcloud
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./${{ inputs.system-dir }}
+        working-directory: .   # 👈 NOW RUNS IN ROOT
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -87,7 +87,6 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
-      # Ensure index.html is in the right place before building
       - name: Fix Vite Entry Point
         run: |
             if [ -f "public/index.html" ] && [ ! -f "index.html" ]; then
@@ -101,5 +100,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.system-dir }}-web-build
-          path: ${{ inputs.system-dir }}/dist
+          path: dist
           retention-days: 14

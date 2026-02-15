@@ -37,7 +37,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          # 👇 CACHE IS DISABLED TO PREVENT ERRORS
+          # Cache disabled to prevent errors
           # cache: 'npm'
           # cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
 
@@ -65,6 +65,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: success()
         with:
+          # Use the explicit name passed from frontend-workflow
           name: ${{ inputs.artifact-name }}-coverage
           path: ${{ inputs.working-directory }}/coverage
           retention-days: 14
