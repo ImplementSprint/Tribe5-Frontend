@@ -11,16 +11,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # 🔄 BUILD STAGE: servEASE-Web
   serveaseweb:
     name: Build servEASE-Web
     uses: ./.github/workflows/front-end-workflow.yml
     with:
       system-dir: servEASE-Web
-      sonar-project-key: Tribe5-Frontend_Web_servEASE-Web
-    secrets: inherit
+      sonar-project-key: Tribe5_Web_servEASE-Web
+    secrets:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-  # 🚀 DEPLOY STAGE: servEASE-Web
   deploy-staging-serveaseweb:
     name: Deploy Staging — servEASE-Web
     needs: serveaseweb
