@@ -1,4 +1,4 @@
-name: Master Pipeline Orchestrator (Web)
+name: Master Pipeline Orchestrator
 
 on:
   push:
@@ -7,22 +7,27 @@ on:
     branches: [main, develop]
 
 concurrency:
-  group: web-pipeline-${{ github.ref }}
+  group: master-pipeline-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  serveaseweb:
-    name: Build servEASE-Web
+  # ╔══════════════════════════════════════════════════════════════╗
+  # ║  STAGE 1 — servEASE-Web Pipeline                          ║
+  # ╚══════════════════════════════════════════════════════════════╝
+  servease-web:
+    name: servEASE-Web Pipeline
     uses: ./.github/workflows/front-end-workflow.yml
     with:
       system-dir: servEASE-Web
-      sonar-project-key: Tribe5_Web_servEASE-Web
-    secrets:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      sonar-project-key: Tribe5-Frontend_servEASE-Web
+    secrets: inherit
 
-  deploy-staging-serveaseweb:
-    name: Deploy Staging — servEASE-Web
-    needs: serveaseweb
+  # ╔══════════════════════════════════════════════════════════════╗
+  # ║  STAGE 2 — Deploy to Staging                               ║
+  # ╚══════════════════════════════════════════════════════════════╝
+  deploy-staging-servease-web:
+    name: Staging — servEASE-Web
+    needs: servease-web
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
     uses: ./.github/workflows/deploy-staging.yml
     with:
@@ -30,4 +35,32 @@ jobs:
       app-type: web
       artifact-name: servEASE-Web-web-build
     secrets: inherit
+
+  # ╔══════════════════════════════════════════════════════════════╗
+  # ║  STAGE 3 — Pipeline Summary                                ║
+  # ╚══════════════════════════════════════════════════════════════╝
+  pipeline-summary:
+    name: Pipeline Summary
+    needs: servease-web
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pipeline Results
+        run: |
+          echo "╔══════════════════════════════════════════════╗"
+          echo "║        MASTER PIPELINE SUMMARY               ║"
+          echo "╠══════════════════════════════════════════════╣"
+          echo "║ Branch:   ${{ github.ref_name }}"
+          echo "║ Commit:   ${{ github.sha }}"
+          echo "║ Actor:    ${{ github.actor }}"
+          echo "╠══════════════════════════════════════════════╣"
+          echo "║ servEASE-Web:      ${{ needs.servease-web.result }}"
+          echo "╚══════════════════════════════════════════════╝"
+
+          # Fail the summary if any pipeline failed
+          if [[ "${{ needs.servease-web.result }}" == "failure" ]]; then
+            echo "❌ Pipeline failed!"
+            exit 1
+          fi
+          echo "✅ Pipeline completed successfully!"
 
